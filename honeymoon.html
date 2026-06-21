@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Honeymoon 2026"/>
+<meta name="theme-color" content="#08080E"/>
+<title>Honeymoon 2026 · Istanbul & KL</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body,#root{height:100%;overflow:hidden;background:#08080E}
+body{font-family:'Georgia',serif;color:#EDE5D5}
+button{font-family:'Georgia',serif;cursor:pointer}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2A2838;border-radius:3px}
+@keyframes slideUp{from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+.fade-in{animation:fadeIn .25s ease}
+.slide-up{animation:slideUp .25s ease}
+.pop-in{animation:popIn .2s cubic-bezier(.34,1.56,.64,1)}
+/* Leaflet dark overrides */
+.leaflet-container{background:#08080E!important;font-family:'Georgia',serif}
+.leaflet-control-attribution{background:#08080ECC!important;color:#5A5468!important;font-size:8px!important;border-radius:6px 0 0 0!important}
+.leaflet-control-attribution a{color:#3AAA6B!important}
+.leaflet-bar a{background:#14141FCC!important;color:#C0B090!important;border-color:#1E1C28!important;backdrop-filter:blur(4px)}
+.leaflet-bar a:hover{background:#1E1C28CC!important;color:#EDE5D5!important}
+.leaflet-bar{border:1px solid #1E1C28!important;box-shadow:0 2px 8px #000A!important}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const {useState,useRef,useCallback,useEffect,useMemo,useReducer} = React;
+
+const P={ist:"#C4863A",kl:"#3AAA6B",bg:"#08080E",card:"#10101A",card2:"#14141F",border:"#1E1C28",gold:"#A07820",goldB:"#F0B840",text:"#EDE5D5",muted:"#5A5468",soft:"#C0B090",rose:"#C890A8"};
+const DRIVE_URL="https://drive.google.com/drive/folders/1QfdUmdj1aMUKHtVTE_ddXPpJ4xC9UsOd";
+
+// ── EVENTS ────────────────────────────────────────────────────────────────────
+const EVENTS=[
+  {id:1,day:"aug15",order:1,arrive:"09:00",leave:"10:00",travelNext:"5 min walk",city:"ist",emoji:"☕",romantic:true,cost:"€0",title:"Rooftop Breakfast — Amiral Palace",mapQ:"Amiral Palace Hotel Sultanahmet Istanbul",lat:41.0038,lng:28.9784,detail:"Halal-certified hotel rooftop. Menemen, simit with white cheese, Turkish tea. Sea of Marmara views through morning haze.",tip:"Request the table facing the sea. Arrive as it opens — fills fast.",transport:"In-hotel"},
+  {id:2,day:"aug15",order:2,arrive:"10:15",leave:"11:45",travelNext:"2 min walk",city:"ist",emoji:"🕌",romantic:true,cost:"Free + timed entry",title:"Hagia Sophia",mapQ:"Hagia Sophia Istanbul",lat:41.0086,lng:28.9802,detail:"Pre-booked timed entry mandatory. Be inside by 11:30 — Friday prayer closes 12:30–14:30. Remove shoes. Look up at the central dome pendentives.",tip:"Go straight in — don't wait outside.",transport:"5 min walk from hotel"},
+  {id:3,day:"aug15",order:3,arrive:"12:00",leave:"12:25",travelNext:"2 min walk",city:"ist",emoji:"🕌",romantic:true,cost:"Free",title:"Blue Mosque + Hippodrome",mapQ:"Sultanahmet Square Istanbul",lat:41.0054,lng:28.9768,detail:"Friday prayer exterior only. Best photo: Hippodrome fountain, both of you, 6 minarets behind. Pomegranate juice ₺30.",tip:"One of the great urban spaces on earth.",transport:"2 min from Hagia Sophia"},
+  {id:4,day:"aug15",order:4,arrive:"12:30",leave:"13:15",travelNext:"2 min walk",city:"ist",emoji:"🍽️",romantic:false,cost:"~€10–12 for two",title:"Lunch — Hafız Mustafa 1864",mapQ:"Hafiz Mustafa 1864 Sultanahmet Istanbul",lat:41.0052,lng:28.9773,detail:"100m from Blue Mosque. Halal. Islak burger, Turkish delight platter, tulumba.",tip:"Ignore restaurants with touts and laminated menus.",transport:"2 min walk"},
+  {id:5,day:"aug15",order:5,arrive:"14:30",leave:"15:20",travelNext:"3 min walk",city:"ist",emoji:"🕌",romantic:false,cost:"Free",title:"Blue Mosque Interior",mapQ:"Blue Mosque Istanbul",lat:41.0054,lng:28.9770,detail:"Re-opens 14:30 after Friday prayer. Iznik blue tile work. 45 min inside.",tip:"Husband needs long trousers.",transport:"Same plaza"},
+  {id:6,day:"aug15",order:6,arrive:"15:30",leave:"16:45",travelNext:"15 min tram+ferry",city:"ist",emoji:"🏛️",romantic:true,cost:"~€24–28 for two",title:"Basilica Cistern",mapQ:"Basilica Cistern Yerebatan Istanbul",lat:41.0083,lng:28.9779,detail:"336 marble columns, two Medusa heads, atmospheric light installation. ~1h. Cool underground.",tip:"Stop at central colonnade. Look up. Hold hands.",transport:"3 min walk from Blue Mosque"},
+  {id:7,day:"aug15",order:7,arrive:"17:15",leave:"17:50",travelNext:"25 min ferry",city:"ist",emoji:"⛴️",romantic:true,cost:"~€3 for two",title:"Bosphorus Ferry — Golden Hour",mapQ:"Karakoy Ferry Terminal Istanbul",lat:41.0227,lng:28.9742,detail:"T1 tram→Karaköy. Ferry→Kadıköy. ₺40/pp. Upper deck LEFT side. 17:30–18:30 light is extraordinary.",tip:"Put phones away for 5 minutes. Just watch.",transport:"T1 tram to Karaköy, then ferry"},
+  {id:8,day:"aug15",order:8,arrive:"18:30",leave:"19:20",travelNext:"10 min walk",city:"ist",emoji:"🚶",romantic:true,cost:"€0",title:"Kadıköy Stroll — Asian Side",mapQ:"Kadikoy Moda Istanbul",lat:40.9907,lng:29.0230,detail:"Walk Moda Caddesi south. Locals at café terraces, cats everywhere, smell of sea.",tip:"Don't buy anything. Just walk. This is real Istanbul.",transport:"10 min from ferry dock"},
+  {id:9,day:"aug15",order:9,arrive:"19:30",leave:"21:00",travelNext:"Return ferry ~25 min",city:"ist",emoji:"🍽️",romantic:true,cost:"~€18–22 for two",title:"Dinner — Çiya Sofrası",mapQ:"Ciya Sofrasi Kadikoy Istanbul",lat:40.9897,lng:29.0237,detail:"Güneşlibahçe Sk. 43. Legendary halal Anatolian. Kuzu incik, zeytinyağlı enginar, meze. Ayran.",tip:"Cafeteria format — the food is the romance.",transport:"10 min walk from ferry"},
+  {id:10,day:"aug16",order:1,arrive:"08:30",leave:"09:20",travelNext:"10 min walk",city:"ist",emoji:"☕",romantic:true,cost:"€0",title:"Rooftop Breakfast — Amiral Palace",mapQ:"Amiral Palace Hotel Sultanahmet Istanbul",lat:41.0038,lng:28.9784,detail:"Request preferred table night before. Watch cruise ships on the Bosphorus. Last full Istanbul morning.",tip:"Order extra tea. Let it breathe.",transport:"In-hotel"},
+  {id:11,day:"aug16",order:2,arrive:"09:30",leave:"12:15",travelNext:"10 min walk",city:"ist",emoji:"🏰",romantic:true,cost:"~€60–70 for two",title:"Topkapı Palace + Harem",mapQ:"Topkapi Palace Istanbul",lat:41.0115,lng:28.9833,detail:"Pre-booked COMBO. Harem sells out daily by 11am. 2.5–3h total. Don't skip Baghdad Pavilion Bosphorus terrace.",tip:"Bring water. No shade in courtyards.",transport:"10 min walk from hotel"},
+  {id:12,day:"aug16",order:3,arrive:"12:30",leave:"13:10",travelNext:"5 min tram",city:"ist",emoji:"🍽️",romantic:false,cost:"~€10–12 for two",title:"Lunch — Sultanahmet Köftecisi",mapQ:"Tarihi Sultanahmet Koftecisi Istanbul",lat:41.0067,lng:28.9764,detail:"Divan Yolu Cad. 12, est.1920. Köfte + piyaz + ayran. Real one at No.12.",tip:"Ignore anyone outside trying to pull you in.",transport:"10 min walk from Topkapı"},
+  {id:13,day:"aug16",order:4,arrive:"13:30",leave:"15:00",travelNext:"15 min tram",city:"ist",emoji:"🛍️",romantic:false,cost:"€20–30 shopping",title:"Spice Bazaar",mapQ:"Egyptian Spice Bazaar Istanbul",lat:41.0168,lng:28.9707,detail:"Real saffron ≥₺200/gram. Buy: lokum, dried figs, rose water. Shops inside > stalls outside.",tip:"Walk through once before buying.",transport:"T1 tram Sultanahmet→Eminönü"},
+  {id:14,day:"aug16",order:5,arrive:"15:30",leave:"17:30",travelNext:"In-hotel",city:"ist",emoji:"💆",romantic:true,cost:"€0 (honeymoon pkg)",title:"Couples Massage — Amiral Palace",mapQ:"Amiral Palace Hotel Sultanahmet Istanbul",lat:41.0038,lng:28.9784,detail:"Included in honeymoon package. Ask about hammam upgrade (€20–30 extra).",tip:"Confirm 24h before. If hammam offered, take it.",transport:"Return to hotel"},
+  {id:15,day:"aug16",order:6,arrive:"19:30",leave:"20:30",travelNext:"2 min walk",city:"ist",emoji:"🥂",romantic:true,cost:"~€10–15",title:"Sunset Mocktails — Hotel Rooftop",mapQ:"Amiral Palace Hotel Sultanahmet Istanbul",lat:41.0038,lng:28.9785,detail:"Hotel rooftop sea views. Golden hour ~20:00 — mosques light up orange for 8 minutes.",tip:"Camera ready at exactly 20:00.",transport:"In-hotel"},
+  {id:16,day:"aug16",order:7,arrive:"20:30",leave:"22:15",travelNext:"2 min walk",city:"ist",emoji:"🌅",romantic:true,cost:"~€40–55 for two",title:"Dinner — Seven Hills Rooftop",mapQ:"Seven Hills Restaurant Istanbul",lat:41.0041,lng:28.9792,detail:"Tevkifhane Sokak 8, 2 min walk. Halal. Terrace facing Hagia Sophia. Grilled sea bass, meze, lamb rack.",tip:"Arrive at booking time. Smart casual.",transport:"2 min walk"},
+  {id:17,day:"aug16",order:8,arrive:"22:30",leave:"23:00",travelNext:"Hotel 2 min",city:"ist",emoji:"🌙",romantic:true,cost:"€0",title:"Night Walk — Sultanahmet Square",mapQ:"Sultanahmet Square Istanbul",lat:41.0062,lng:28.9777,detail:"Crowds gone. Both mosques illuminated. Walk through Hippodrome back to hotel.",tip:"Walk slowly. Last Istanbul night.",transport:"2 min walk back to hotel"},
+  {id:18,day:"aug18",order:1,arrive:"15:00",leave:"16:00",travelNext:"In-hotel",city:"kl",emoji:"🏨",romantic:true,cost:"—",title:"Check-In — Imperial Lexis KL",mapQ:"Imperial Lexis Kuala Lumpur",lat:3.1481,lng:101.7133,detail:"53F Executive Pool Room with private pool. Mention honeymoon. Ask for city skyline view.",tip:"Ask: city skyline view? Early check-in RM200/hr — skip it.",transport:"5 min Grab from Pavilion KL"},
+  {id:19,day:"aug18",order:2,arrive:"16:00",leave:"18:00",travelNext:"12 min walk",city:"kl",emoji:"🏊",romantic:true,cost:"€0",title:"In-Room Pool — First Session",mapQ:"Imperial Lexis Kuala Lumpur",lat:3.1481,lng:101.7134,detail:"Private pool, city view 53F. Late afternoon light golden. Order mocktails. Stay 90+ min.",tip:"Best photos 17:00–18:00.",transport:"In-room"},
+  {id:20,day:"aug18",order:3,arrive:"18:30",leave:"19:55",travelNext:"At KLCC",city:"kl",emoji:"🏙️",romantic:true,cost:"€0",title:"KLCC Park — Petronas at Sunset",mapQ:"KLCC Park Kuala Lumpur",lat:3.1579,lng:101.7116,detail:"12 min walk. Inside park facing north, reflection pool. Golden hour — towers turn amber.",tip:"South reflection pool edge, both in frame, towers behind.",transport:"12 min walk or RM8 Grab"},
+  {id:21,day:"aug18",order:4,arrive:"20:00",leave:"20:20",travelNext:"12 min walk",city:"kl",emoji:"⛲",romantic:true,cost:"Free",title:"Petronas Fountain Show",mapQ:"Petronas Twin Towers Kuala Lumpur",lat:3.1579,lng:101.7117,detail:"Free water + light show nightly 20:00 and 21:00, ~15 min.",tip:"Stand right of main fountain pool for best angle.",transport:"Inside KLCC Park"},
+  {id:22,day:"aug18",order:5,arrive:"22:00",leave:"23:30",travelNext:"Sleep",city:"kl",emoji:"🌃",romantic:true,cost:"€0",title:"Night Pool — Imperial Lexis",mapQ:"Imperial Lexis Kuala Lumpur",lat:3.1481,lng:101.7132,detail:"Night swim in private 53F pool. KL city lights below. Order sparkling water.",tip:"Cannot photograph this well. Experience it.",transport:"12 min walk or RM8 Grab back"},
+  {id:23,day:"aug19",order:1,arrive:"09:00",leave:"11:00",travelNext:"40 min Grab",city:"kl",emoji:"🌅",romantic:true,cost:"~€10 room service",title:"Slow Morning — In-Room Pool",mapQ:"Imperial Lexis Kuala Lumpur",lat:3.1481,lng:101.7133,detail:"Fireflies tonight — no rush. Room service nasi lemak if available. Pool 09:00–11:00.",tip:"Nasi lemak in bed, then pool. This is the honeymoon rhythm.",transport:"In-hotel"},
+  {id:24,day:"aug19",order:2,arrive:"11:45",leave:"12:20",travelNext:"10 min walk to pier",city:"kl",emoji:"🕌",romantic:true,cost:"Free + RM30 Grab",title:"Putra Mosque — Putrajaya",mapQ:"Putra Mosque Putrajaya Malaysia",lat:2.9234,lng:101.6876,detail:"Grab 40 min, RM30–35. Rose-pink granite — one of the most beautiful mosques in SE Asia. Free entry.",tip:"Best photo: northern shore of Putrajaya Lake.",transport:"Grab (~RM30–35)"},
+  {id:25,day:"aug19",order:3,arrive:"12:30",leave:"13:10",travelNext:"Grab back to KL",city:"kl",emoji:"⛵",romantic:true,cost:"~€4 for two",title:"Putrajaya Lake Cruise",mapQ:"Putrajaya Lake Jetty Malaysia",lat:2.9261,lng:101.6932,detail:"RM10/pp, 30 min. Putra Mosque from the water — the hero photo.",tip:"Sit on the side facing the mosque.",transport:"10 min walk from Putra Mosque to pier"},
+  {id:26,day:"aug19",order:4,arrive:"16:00",leave:"23:30",travelNext:"Hotel drop-off",city:"kl",emoji:"✨",romantic:true,cost:"~€70–80 for two",title:"Fireflies Tour — Klook + Boat",mapQ:"Kampung Kuantan Kuala Selangor Malaysia",lat:3.3500,lng:101.2667,detail:"Pickup 16:00. Kota Melawati, halal seafood dinner, firefly boat 20:30. Thousands of synchronised fireflies in silent mangroves. NO FLASH.",tip:"Wear long sleeves + DEET. Don't photograph the fireflies — just watch.",transport:"Hotel pickup + drop-off included"},
+  {id:27,day:"aug20",order:1,arrive:"10:30",leave:"12:00",travelNext:"KTM 30 min back",city:"kl",emoji:"🛕",romantic:false,cost:"~€5 for two",title:"Batu Caves",mapQ:"Batu Caves Selangor Malaysia",lat:3.2379,lng:101.6840,detail:"KTM from KL Sentral (RM5/pp, 30 min). 272 rainbow steps. 42.7m gold Murugan statue.",tip:"Top of stairs → look back down at city. Macaques bold — hold bags.",transport:"KTM from KL Sentral"},
+  {id:28,day:"aug20",order:2,arrive:"13:30",leave:"15:00",travelNext:"10 min Grab",city:"kl",emoji:"🛍️",romantic:false,cost:"€25–35 shopping",title:"Central Market — Gift Shopping",mapQ:"Central Market Kuala Lumpur",lat:3.1443,lng:101.6956,detail:"LRT to Pasar Seni. Fixed-price crafts. Batik (RM25–80), pewter, jewellery.",tip:"The batik fabric is genuinely beautiful.",transport:"LRT to Pasar Seni"},
+  {id:29,day:"aug20",order:3,arrive:"15:30",leave:"17:30",travelNext:"5 min walk",city:"kl",emoji:"💆",romantic:true,cost:"~€120–180 for two",title:"Donna Spa — Starhill Gallery",mapQ:"Starhill Gallery Bukit Bintang Kuala Lumpur",lat:3.1464,lng:101.7118,detail:"Level 5 Starhill Gallery, 181 Jalan Bukit Bintang. Pre-booked couples room, same-gender therapists. 90 min.",tip:"Book 1+ week ahead. Most important booking after fireflies.",transport:"5 min walk from hotel"},
+  {id:30,day:"aug20",order:4,arrive:"18:00",leave:"19:15",travelNext:"10 min Grab",city:"kl",emoji:"🚁",romantic:true,cost:"~€18–22 mocktails",title:"Heli Lounge Bar — Sunset",mapQ:"Heli Lounge Bar GTower Kuala Lumpur",lat:3.1598,lng:101.7202,detail:"GTower rooftop, 199 Jalan Tun Razak. Actual helipad, 34F, 360° open air. Mocktails RM35–45.",tip:"Smart casual. Heels not recommended — metal grid floor.",transport:"Grab (RM8–10)"},
+  {id:31,day:"aug20",order:5,arrive:"19:30",leave:"21:15",travelNext:"10 min walk",city:"kl",emoji:"🍢",romantic:true,cost:"~€11–15 for two",title:"Jalan Alor Street Food",mapQ:"Jalan Alor Kuala Lumpur",lat:3.1456,lng:101.7085,detail:"10 min walk. Wong Ah Wah halal chicken wings — 10 pcs, dark soy sauce. Green halal logo on other stalls.",tip:"Not every stall halal — check green logo.",transport:"10 min walk from hotel"},
+  {id:32,day:"aug20",order:6,arrive:"21:30",leave:"23:00",travelNext:"12 min walk/Grab",city:"kl",emoji:"🌹",romantic:true,cost:"~€55–90 for two",title:"THIRTY8 — Grand Hyatt (Dinner)",mapQ:"Grand Hyatt Kuala Lumpur",lat:3.1586,lng:101.7134,detail:"38F Grand Hyatt, Jalan Pinang. Halal-certified. 360° Petronas view. Window table. RM250–400. ⚠️ Replaces Marini's on 57 — NOT halal.",tip:"Your dress-up honeymoon dinner. Take your time.",transport:"Grab (RM8) or 12 min walk"},
+  {id:33,day:"aug21",order:1,arrive:"08:00",leave:"12:00",travelNext:"Grab to KL Sentral",city:"kl",emoji:"🌅",romantic:true,cost:"€0",title:"Final Morning — In-Room Pool",mapQ:"Imperial Lexis Kuala Lumpur",lat:3.1481,lng:101.7133,detail:"Last pool morning. No agenda. The city, the water, each other. The final chapter.",tip:"Don't pack until you have to.",transport:"In-room"},
+];
+
+const DAY_META={
+  aug15:{label:"15 Aug",name:"Old City Immersion",city:"ist",color:P.ist},
+  aug16:{label:"16 Aug",name:"Palaces & Rooftop",city:"ist",color:P.ist},
+  aug18:{label:"18 Aug",name:"KL Arrival Day",city:"kl",color:P.kl},
+  aug19:{label:"19 Aug",name:"Putrajaya + Fireflies",city:"kl",color:P.kl},
+  aug20:{label:"20 Aug",name:"Batu Caves · Spa · Dinner",city:"kl",color:P.kl},
+  aug21:{label:"21 Aug",name:"Final Morning",city:"kl",color:P.kl},
+};
+
+const BUDGET=[
+  {cat:"Airport Transfers",est:"€75–90"},{cat:"Local Transport (trams, ferry, Grab, KTM)",est:"€35–45"},
+  {cat:"Istanbul Meals — 3 days",est:"€80–95"},{cat:"KL Meals — 4 days",est:"€70–85"},
+  {cat:"Istanbul Activities (Cistern + Topkapı)",est:"€90–110"},
+  {cat:"KL Activities (caves, cruise, helipad)",est:"€35–45"},
+  {cat:"Fireflies Tour — Klook (×2)",est:"€70–80"},{cat:"Donna Spa (×2, 90 min)",est:"€120–180"},
+  {cat:"THIRTY8 Romantic Dinner",est:"€55–90"},{cat:"Seven Hills Rooftop Dinner",est:"€40–55"},
+  {cat:"Gifts & Shopping",est:"€60–80"},{cat:"SIM Cards (Turkey + Malaysia)",est:"€15–20"},
+  {cat:"Tips & Misc",est:"€20–30"},{cat:"TOTAL",est:"€765–905",bold:true},
+];
+
+const CHECKLIST_DATA=[
+  {when:"2 weeks before",items:["Book Hagia Sophia timed entry — official Ayasofya website","Book Topkapı Palace + Harem COMBO online","Book Basilica Cistern timed entry","Book Klook Fireflies Tour — confirm Imperial Lexis pickup","Book Donna Spa — couples room + same-gender therapists","Book THIRTY8 Grand Hyatt — window table (restaurant.kuagh@hyatt.com)","Email Amiral Palace: massage slot + rooftop breakfast","Email Imperial Lexis: honeymoon note + city-view room","Book SAW airport transfer (private car ~€12–15)"]},
+  {when:"1 week before",items:["Download Google Maps offline: Istanbul + KL","Download Grab app + set up payment","Download Klook app — manage fireflies","Download Moovit (KL public transport)","Check AirAsia X in-flight meals — pre-order","Buy Turkish Lira at bureau de change"]},
+  {when:"Day of departure",items:["Type G adapter (Malaysia) + Type F adapter (Turkey)","All confirmations + tickets + vouchers printed/digital","DEET mosquito repellent 30%+","Long sleeves + trousers for firefly night","Sunscreen SPF 50+","Small umbrella (KL afternoon storms)","Sandals AND closed shoes","₺2,000–2,500 Turkish Lira/person","RM500–600/person (or withdraw at KLIA ATM)"]},
+];
+
+// ── STORES ────────────────────────────────────────────────────────────────────
+function useMedia(){
+  const[store,setStore]=useState({});
+  const add=useCallback((eid,files)=>{
+    const arr=Array.from(files).filter(f=>f.type.startsWith("image/")||f.type.startsWith("video/"));
+    if(!arr.length)return;
+    setStore(p=>({...p,[eid]:[...(p[eid]||[]),...arr.map(f=>({id:"m"+Date.now()+Math.random().toString(36).slice(2),type:f.type.startsWith("video/")?"video":"photo",url:URL.createObjectURL(f),name:f.name}))]}));
+  },[]);
+  const remove=useCallback((eid,mid)=>{setStore(p=>({...p,[eid]:(p[eid]||[]).filter(m=>m.id!==mid)}));},[]);
+  const count=useCallback(eid=>(store[eid]||[]).length,[store]);
+  const total=useMemo(()=>Object.values(store).reduce((s,a)=>s+a.length,0),[store]);
+  return{store,add,remove,count,total};
+}
+
+function useChecked(){
+  const[ch,setCh]=useState({});
+  const toggle=useCallback(id=>{setCh(p=>({...p,[id]:!p[id]}));},[]);
+  const isChecked=useCallback(id=>!!ch[id],[ch]);
+  const countDay=useCallback(day=>EVENTS.filter(e=>e.day===day&&ch[e.id]).length,[ch]);
+  return{toggle,isChecked,countDay};
+}
+
+// ── REAL MAP (Leaflet + CartoDB dark tiles) ───────────────────────────────────
+
+function CityMapLeaflet({city,events,mediaStore,checked,onPinTap,selectedId}){
+  const mapDivRef=useRef(null);
+  const instanceRef=useRef(null);
+  const routeRef=useRef(null);
+  const markersRef=useRef({});
+  const col=city==="ist"?P.ist:P.kl;
+  const {isChecked}=checked;
+
+  // Init map once
+  useEffect(()=>{
+    if(!mapDivRef.current||instanceRef.current)return;
+    const lats=events.map(e=>e.lat);
+    const lngs=events.map(e=>e.lng);
+    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
+    const cLng=(Math.min(...lngs)+Math.max(...lngs))/2;
+    const map=L.map(mapDivRef.current,{
+      center:[cLat,cLng],
+      zoom:city==="ist"?14:12,
+      zoomControl:false,
+      attributionControl:true,
+    });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
+      attribution:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains:"abcd",
+      maxZoom:20,
+    }).addTo(map);
+    L.control.zoom({position:"bottomright"}).addTo(map);
+    if(events.length>1){
+      const bounds=L.latLngBounds(events.map(e=>[e.lat,e.lng]));
+      map.fitBounds(bounds,{padding:[32,32]});
+    }
+    instanceRef.current=map;
+    return()=>{
+      map.remove();
+      instanceRef.current=null;
+      markersRef.current={};
+      routeRef.current=null;
+    };
+  },[]);// eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update markers & route when state changes
+  useEffect(()=>{
+    const map=instanceRef.current;
+    if(!map)return;
+    if(routeRef.current){routeRef.current.remove();routeRef.current=null;}
+    Object.values(markersRef.current).forEach(m=>m.remove());
+    markersRef.current={};
+    if(events.length>1){
+      routeRef.current=L.polyline(events.map(e=>[e.lat,e.lng]),{
+        color:col,weight:2,dashArray:"6,5",opacity:0.5,
+      }).addTo(map);
+    }
+    events.forEach(ev=>{
+      const done=isChecked(ev.id);
+      const isSel=selectedId===ev.id;
+      const pinCol=done?"#2A7A40":col;
+      const sz=isSel?38:30;
+      const border=isSel?"2px solid #fff":`2px solid ${pinCol}88`;
+      const shadow=isSel?`0 0 0 3px ${pinCol}44,0 4px 14px #000C`:"0 2px 8px #000A";
+      const photos=(mediaStore[ev.id]||[]).filter(m=>m.type==="photo");
+      const lastPhoto=photos[photos.length-1];
+      const photoHtml=lastPhoto?`<div style="position:absolute;bottom:${sz+6}px;left:50%;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;border:2px solid ${pinCol};overflow:hidden;box-shadow:0 2px 10px #000A;cursor:pointer"><img src="${lastPhoto.url}" style="width:100%;height:100%;object-fit:cover"/>${photos.length>1?`<div style="position:absolute;bottom:2px;right:2px;background:#000A;border-radius:8px;padding:1px 4px;font-size:8px;color:#fff;font-family:sans-serif">+${photos.length-1}</div>`:"" }</div>`:"";
+      const labelHtml=isSel?`<div style="position:absolute;top:${sz+5}px;left:50%;transform:translateX(-50%);background:#0D0D14EE;border:1px solid ${col};border-radius:8px;padding:3px 8px;white-space:nowrap;font-size:9px;color:${col};font-family:sans-serif;font-weight:700;box-shadow:0 2px 8px #000A">${ev.emoji} ${ev.title.length>20?ev.title.slice(0,20)+"…":ev.title}</div>`:"";
+      const html=`<div style="position:relative;width:${sz}px;height:${sz}px">${photoHtml}<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${pinCol};border:${border};box-shadow:${shadow};display:flex;align-items:center;justify-content:center;font-size:${isSel?13:10}px;color:#fff;font-weight:700;font-family:sans-serif;cursor:pointer">${done?"✓":ev.order}</div>${labelHtml}</div>`;
+      const icon=L.divIcon({
+        className:"",
+        html,
+        iconSize:[sz,sz],
+        iconAnchor:[sz/2,sz/2],
+      });
+      const marker=L.marker([ev.lat,ev.lng],{icon,zIndexOffset:isSel?1000:0})
+        .addTo(map)
+        .on("click",()=>onPinTap(ev));
+      markersRef.current[ev.id]=marker;
+    });
+  },[events,isChecked,selectedId,mediaStore,col,onPinTap]);
+
+  return(
+    <div style={{position:"relative",width:"100%",height:"100%"}}>
+      <div ref={mapDivRef} style={{width:"100%",height:"100%",borderRadius:10,overflow:"hidden"}}/>
+      <div style={{position:"absolute",top:8,left:8,zIndex:500,background:"#08080ECC",border:`1px solid ${col}44`,borderRadius:8,padding:"3px 9px",fontSize:9,color:col,fontFamily:"sans-serif",fontWeight:700,letterSpacing:1,pointerEvents:"none"}}>
+        {city==="ist"?"🇹🇷 Istanbul":"🇲🇾 Kuala Lumpur"}
+      </div>
+    </div>
+  );
+}
+
+// ── STOP CARD ─────────────────────────────────────────────────────────────────
+function StopCard({ev,checked,onToggle,onSelect,mediaCount,isSelected}){
+  const done=checked.isChecked(ev.id);
+  const col=ev.city==="ist"?P.ist:P.kl;
+  const cnt=mediaCount(ev.id);
+  return(
+    <div onClick={()=>onSelect(ev)} style={{background:isSelected?col+"18":done?"#0A1A0A":P.card,border:`1px solid ${isSelected?col:done?P.kl+"44":P.border}`,borderRadius:10,marginBottom:5,overflow:"hidden",transition:"all .2s",cursor:"pointer"}}>
+      <div style={{display:"flex",alignItems:"stretch"}}>
+        <button onClick={e=>{e.stopPropagation();onToggle(ev.id);}} style={{width:38,flexShrink:0,background:done?"#1A3A1A":"#0C0C14",border:"none",borderRight:`1px solid ${P.border}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+          <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${done?P.kl:P.muted}`,background:done?P.kl:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",transition:"all .2s"}}>{done?"✓":""}</div>
+          <div style={{fontSize:8,color:done?P.kl:col,fontFamily:"sans-serif",fontWeight:700}}>{ev.order}</div>
+        </button>
+        <div style={{flex:1,padding:"8px 10px"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+            <span style={{fontSize:15}}>{ev.emoji}</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,color:done?P.muted:P.text,fontWeight:600,lineHeight:1.3,textDecoration:done?"line-through":"none"}}>{ev.title}</div>
+              <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
+                <span style={{fontSize:9,background:col+"1A",border:`1px solid ${col}44`,color:col,padding:"2px 7px",borderRadius:8,fontFamily:"sans-serif",fontWeight:700}}>{ev.arrive} – {ev.leave}</span>
+                {ev.travelNext&&<span style={{fontSize:9,color:"#5DC890",fontFamily:"sans-serif"}}>→ {ev.travelNext}</span>}
+                {cnt>0&&<span style={{fontSize:9,color:col,fontFamily:"sans-serif"}}>📷 {cnt}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAP VIEW (map + list side by side) ───────────────────────────────────────
+function MapView({dayFilter,checked,onToggle,media,onOpenDrawer}){
+  const[selectedId,setSelectedId]=useState(null);
+  const listRef=useRef(null);
+  const cardRefs=useRef({});
+
+  const evs=useMemo(()=>dayFilter?EVENTS.filter(e=>e.day===dayFilter):EVENTS,[dayFilter]);
+  const istEvs=useMemo(()=>evs.filter(e=>e.city==="ist"),[evs]);
+  const klEvs=useMemo(()=>evs.filter(e=>e.city==="kl"),[evs]);
+  const showIst=istEvs.length>0;
+  const showKL=klEvs.length>0;
+  const both=showIst&&showKL;
+
+  const handlePinTap=useCallback(ev=>{
+    setSelectedId(prev=>prev===ev.id?null:ev.id);
+    // Scroll list to card
+    setTimeout(()=>{
+      const el=cardRefs.current[ev.id];
+      if(el&&listRef.current) el.scrollIntoView({behavior:"smooth",block:"nearest"});
+    },50);
+  },[]);
+
+  const handleCardSelect=useCallback(ev=>{
+    setSelectedId(prev=>prev===ev.id?null:ev.id);
+  },[]);
+
+  const handleOpenDetail=useCallback(ev=>{
+    onOpenDrawer(ev);
+  },[onOpenDrawer]);
+
+  const total=evs.filter(e=>checked.isChecked(e.id)).length;
+  const days=dayFilter?[dayFilter]:Object.keys(DAY_META);
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* Map area */}
+      <div style={{flex:"0 0 52%",display:"flex",flexDirection:"column",gap:4,padding:"6px 8px 0",minHeight:0}}>
+        {showIst&&(
+          <div style={{flex:both?1:2,minHeight:0,borderRadius:10,overflow:"hidden"}}>
+            <CityMapLeaflet city="ist" events={istEvs} mediaStore={media.store} checked={checked} onPinTap={handlePinTap} selectedId={selectedId}/>
+          </div>
+        )}
+        {both&&<div style={{height:3,flexShrink:0}}/>}
+        {showKL&&(
+          <div style={{flex:both?1:2,minHeight:0,borderRadius:10,overflow:"hidden"}}>
+            <CityMapLeaflet city="kl" events={klEvs} mediaStore={media.store} checked={checked} onPinTap={handlePinTap} selectedId={selectedId}/>
+          </div>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div style={{padding:"5px 10px",display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+        <div style={{flex:1,height:3,background:P.border,borderRadius:2,overflow:"hidden"}}>
+          <div style={{width:`${Math.round(total/evs.length*100)}%`,height:"100%",background:P.goldB,borderRadius:2,transition:"width .4s"}}/>
+        </div>
+        <span style={{fontSize:9,color:P.goldB,fontFamily:"sans-serif",fontWeight:700,flexShrink:0}}>{total}/{evs.length}</span>
+      </div>
+
+      {/* Stops list */}
+      <div ref={listRef} style={{flex:1,overflowY:"auto",padding:"0 8px 10px",minHeight:0}}>
+        {days.map(day=>{
+          const meta=DAY_META[day];
+          const dayEvs=EVENTS.filter(e=>e.day===day);
+          if(!dayEvs.length)return null;
+          const doneN=checked.countDay(day);
+          return(
+            <div key={day} style={{marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 2px",marginBottom:4}}>
+                <div style={{fontSize:9,letterSpacing:2,color:meta.color,textTransform:"uppercase",fontFamily:"sans-serif",fontWeight:700}}>{meta.label} — {meta.name}</div>
+                <div style={{fontSize:9,color:doneN===dayEvs.length?P.kl:P.muted,fontFamily:"sans-serif"}}>{doneN}/{dayEvs.length}</div>
+              </div>
+              {dayEvs.map(ev=>(
+                <div key={ev.id} ref={el=>cardRefs.current[ev.id]=el}>
+                  <StopCard
+                    ev={ev}
+                    checked={checked}
+                    onToggle={onToggle}
+                    onSelect={ev=>{handleCardSelect(ev);handleOpenDetail(ev);}}
+                    mediaCount={media.count}
+                    isSelected={selectedId===ev.id}
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── EVENT DRAWER ──────────────────────────────────────────────────────────────
+function MediaPanel({event,store,add,remove}){
+  const fileRef=useRef(null),[lb,setLb]=useState(null);
+  const items=store[event.id]||[],col=event.city==="ist"?P.ist:P.kl;
+  return(<div>
+    <div onClick={()=>fileRef.current?.click()} onDrop={e=>{e.preventDefault();add(event.id,e.dataTransfer.files);}} onDragOver={e=>e.preventDefault()} style={{border:`1.5px dashed ${col}55`,borderRadius:10,padding:"12px 10px",textAlign:"center",cursor:"pointer",background:col+"08",marginBottom:8}}>
+      <div style={{fontSize:20}}>📷</div>
+      <div style={{fontSize:11,color:P.muted,marginTop:4,fontFamily:"sans-serif",lineHeight:1.4}}>Tap to add photos & videos<br/><span style={{fontSize:9,color:col+"88"}}>First photo appears as bubble on the map pin</span></div>
+      <input ref={fileRef} type="file" accept="image/*,video/*" multiple style={{display:"none"}} onChange={e=>{add(event.id,e.target.files);e.target.value="";}}/>
+    </div>
+    <a href={DRIVE_URL} target="_blank" rel="noreferrer" style={{display:"block",textAlign:"center",fontSize:9,color:P.kl,marginBottom:8,fontFamily:"sans-serif",opacity:0.8}}>↗ Open Google Drive folder to backup</a>
+    {items.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5}}>
+      {items.map(m=>(<div key={m.id} style={{position:"relative",aspectRatio:"1",borderRadius:7,overflow:"hidden",background:"#1A1A10"}}>
+        {m.type==="photo"?<img src={m.url} alt={m.name} onClick={()=>setLb(m)} style={{width:"100%",height:"100%",objectFit:"cover",cursor:"pointer"}}/>:<video src={m.url} onClick={()=>setLb(m)} style={{width:"100%",height:"100%",objectFit:"cover",cursor:"pointer"}}/>}
+        <button onClick={()=>remove(event.id,m.id)} style={{position:"absolute",top:2,right:2,background:"#C02020BB",border:"none",borderRadius:"50%",width:16,height:16,color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+      </div>))}
+    </div>}
+    {lb&&<div onClick={()=>setLb(null)} style={{position:"fixed",inset:0,zIndex:2000,background:"#000E",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      {lb.type==="photo"?<img src={lb.url} style={{maxWidth:"100%",maxHeight:"88vh",borderRadius:10,objectFit:"contain"}}/>:<video src={lb.url} controls autoPlay onClick={e=>e.stopPropagation()} style={{maxWidth:"100%",maxHeight:"88vh",borderRadius:10}}/>}
+      <button onClick={()=>setLb(null)} style={{position:"absolute",top:18,right:18,background:"#0009",border:"1px solid #444",borderRadius:"50%",width:32,height:32,color:"#fff",fontSize:17,cursor:"pointer"}}>×</button>
+    </div>}
+  </div>);
+}
+
+function EventDrawer({event,onClose,checked,onToggle,media}){
+  if(!event)return null;
+  const col=event.city==="ist"?P.ist:P.kl;
+  const dm=DAY_META[event.day];
+  const done=checked.isChecked(event.id);
+  const cnt=media.count(event.id);
+  return(
+    <div className="slide-up" style={{position:"absolute",bottom:0,left:0,right:0,background:"#0C0C16",borderTop:`2px solid ${col}`,borderRadius:"18px 18px 0 0",maxHeight:"78vh",overflowY:"auto",zIndex:400,boxShadow:"0 -12px 40px #000C"}}>
+      <div style={{display:"flex",justifyContent:"center",paddingTop:8}}><div style={{width:32,height:4,borderRadius:2,background:"#2A2830"}}/></div>
+      <div style={{padding:"10px 16px 28px"}}>
+        <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
+          <div style={{width:42,height:42,borderRadius:10,background:col+"1A",border:`1.5px solid ${col}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{event.emoji}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:col,letterSpacing:2.5,textTransform:"uppercase",fontFamily:"sans-serif",marginBottom:2}}>{dm?.label} · Stop {event.order}</div>
+            <div style={{fontSize:14,fontWeight:700,color:P.text,lineHeight:1.3}}>{event.title}</div>
+            {event.romantic&&<div style={{fontSize:9,color:P.rose,marginTop:2,fontStyle:"italic"}}>💫 Honeymoon moment</div>}
+          </div>
+          <button onClick={onClose} style={{background:"#20202C",border:"none",borderRadius:"50%",width:26,height:26,color:P.muted,fontSize:14,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+        </div>
+
+        {/* Timing */}
+        <div style={{display:"flex",gap:6,marginBottom:8}}>
+          {[["ARRIVE",event.arrive,col],["LEAVE",event.leave,col],["COST",event.cost,P.gold]].map(([lbl,val,c])=>(
+            <div key={lbl} style={{flex:1,background:"#08080E",border:`1px solid ${c}33`,borderRadius:8,padding:"6px 8px"}}>
+              <div style={{fontSize:7,color:P.muted,fontFamily:"sans-serif",marginBottom:2}}>{lbl}</div>
+              <div style={{fontSize:11,color:c,fontWeight:700,fontFamily:"sans-serif",lineHeight:1.2}}>{val}</div>
+            </div>
+          ))}
+        </div>
+        {event.travelNext&&<div style={{fontSize:10,padding:"5px 10px",background:"#001A10",borderRadius:8,color:"#5DC890",fontFamily:"sans-serif",marginBottom:10}}>🚇 Next: {event.travelNext}</div>}
+
+        {/* Check + Google Maps */}
+        <div style={{display:"flex",gap:6,marginBottom:12}}>
+          <button onClick={()=>onToggle(event.id)} style={{flex:1,padding:"9px",borderRadius:9,border:`1.5px solid ${done?P.kl:col+"66"}`,background:done?"#001A10":col+"14",color:done?P.kl:col,fontSize:11,fontFamily:"sans-serif",cursor:"pointer",fontWeight:700,transition:"all .2s"}}>
+            {done?"✓ Done — tap to undo":"○ Mark as done"}
+          </button>
+          <a href={`https://maps.google.com/?q=${encodeURIComponent(event.mapQ)}`} target="_blank" rel="noreferrer" style={{flex:1,padding:"9px",borderRadius:9,border:`1px solid ${col}44`,background:col+"0A",color:col,fontSize:11,fontFamily:"sans-serif",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+            🗺 Google Maps
+          </a>
+        </div>
+
+        {/* Detail */}
+        <div style={{fontSize:12,color:P.soft,lineHeight:1.75,padding:"10px 12px",background:P.card2,borderRadius:9,marginBottom:8,fontFamily:"sans-serif"}}>{event.detail}</div>
+        {event.tip&&<div style={{fontSize:11,padding:"7px 11px",background:"#0A0A1A",borderLeft:`2px solid ${col}`,borderRadius:"0 8px 8px 0",color:"#8898C8",lineHeight:1.5,marginBottom:10,fontFamily:"sans-serif"}}>💡 {event.tip}</div>}
+        {event.transport&&<div style={{fontSize:10,padding:"5px 10px",background:"#001A10",borderRadius:8,color:"#5DC890",fontFamily:"sans-serif",marginBottom:12}}>🚇 {event.transport}</div>}
+
+        {/* Memories */}
+        <div style={{fontSize:9,letterSpacing:2,color:P.gold,textTransform:"uppercase",marginBottom:8,fontFamily:"sans-serif",display:"flex",justifyContent:"space-between"}}>
+          <span>📸 Memories</span>{cnt>0&&<span style={{color:col,fontWeight:700}}>{cnt} photo{cnt>1?"s":""} · shows on map pin</span>}
+        </div>
+        <MediaPanel event={event} store={media.store} add={media.add} remove={media.remove}/>
+      </div>
+    </div>
+  );
+}
+
+// ── DAY BAR ──────────────────────────────────────────────────────────────────
+function DayBar({active,onChange,checked}){
+  const opts=[{id:null,label:"All",color:P.gold},...Object.entries(DAY_META).map(([id,m])=>({id,label:m.label,color:m.color}))];
+  return(
+    <div style={{display:"flex",gap:5,overflowX:"auto",padding:"7px 10px",background:P.bg,borderBottom:`1px solid ${P.border}`,flexShrink:0}}>
+      {opts.map(o=>{
+        const dayEvs=o.id?EVENTS.filter(e=>e.day===o.id):EVENTS;
+        const done=o.id?checked.countDay(o.id):EVENTS.filter(e=>checked.isChecked(e.id)).length;
+        const pct=dayEvs.length?Math.round(done/dayEvs.length*100):0;
+        return(
+          <button key={o.id||"all"} onClick={()=>onChange(o.id)} style={{padding:"4px 10px",borderRadius:14,whiteSpace:"nowrap",cursor:"pointer",border:`1px solid ${active===o.id?o.color:"#222030"}`,background:active===o.id?o.color+"22":"transparent",color:active===o.id?P.text:P.muted,fontSize:9.5,fontFamily:"sans-serif",flexShrink:0}}>
+            {o.label}{pct>0&&<span style={{marginLeft:3,fontSize:8,color:o.color}}>{pct}%</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── PLAN VIEW ────────────────────────────────────────────────────────────────
+function PlanView({checked,onToggle,onSelectEvent,mediaCount}){
+  const[activeDay,setActiveDay]=useState("aug15");
+  const[expanded,setExpanded]=useState({});
+  const meta=DAY_META[activeDay];
+  const evs=EVENTS.filter(e=>e.day===activeDay);
+  const doneN=checked.countDay(activeDay);
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{display:"flex",gap:5,overflowX:"auto",padding:"7px 10px",flexShrink:0}}>
+        {Object.entries(DAY_META).map(([id,m])=>{
+          const d=checked.countDay(id),t=EVENTS.filter(e=>e.day===id).length;
+          return(<button key={id} onClick={()=>setActiveDay(id)} style={{padding:"5px 10px",borderRadius:14,cursor:"pointer",whiteSpace:"nowrap",border:`1px solid ${activeDay===id?m.color:"#222030"}`,background:activeDay===id?m.color+"22":"transparent",color:activeDay===id?P.text:P.muted,fontSize:9.5,fontFamily:"sans-serif",flexShrink:0}}>
+            <div style={{fontWeight:700}}>{m.label}</div>
+            <div style={{fontSize:7.5,marginTop:1,opacity:0.7}}>{d}/{t}</div>
+          </button>);
+        })}
+      </div>
+      <div style={{padding:"0 10px 6px",flexShrink:0}}>
+        <div style={{background:meta.color+"14",border:`1px solid ${meta.color}33`,borderRadius:9,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:8,color:meta.color,letterSpacing:2,textTransform:"uppercase",fontFamily:"sans-serif"}}>{meta.label}</div>
+            <div style={{fontSize:14,fontWeight:700,color:P.text,marginTop:2}}>{meta.name}</div>
+          </div>
+          <div style={{fontSize:11,color:doneN===evs.length?P.kl:meta.color,fontFamily:"sans-serif",fontWeight:700}}>{doneN}/{evs.length}</div>
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"0 10px 14px"}}>
+        {evs.map(ev=>{
+          const isOpen=expanded[ev.id];
+          const done=checked.isChecked(ev.id);
+          const cnt=mediaCount(ev.id);
+          return(
+            <div key={ev.id} style={{background:done?"#0A1A0A":P.card,border:`1px solid ${done?P.kl+"44":P.border}`,borderRadius:9,marginBottom:5,overflow:"hidden",transition:"all .2s"}}>
+              <div style={{display:"flex",alignItems:"stretch"}}>
+                <button onClick={()=>onToggle(ev.id)} style={{width:36,flexShrink:0,background:done?"#1A3A1A":"#0C0C14",border:"none",borderRight:`1px solid ${P.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <div style={{width:19,height:19,borderRadius:"50%",border:`2px solid ${done?P.kl:P.muted}`,background:done?P.kl:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",transition:"all .2s"}}>{done?"✓":""}</div>
+                </button>
+                <button onClick={()=>setExpanded(p=>({...p,[ev.id]:!p[ev.id]}))} style={{flex:1,background:"none",border:"none",textAlign:"left",padding:"8px 10px",cursor:"pointer"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+                    <span style={{fontSize:14}}>{ev.emoji}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,color:done?P.muted:P.text,fontWeight:600,lineHeight:1.2,textDecoration:done?"line-through":"none"}}>{ev.title}</div>
+                      <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap"}}>
+                        <span style={{fontSize:9,color:meta.color,fontFamily:"sans-serif",fontWeight:700}}>{ev.arrive}–{ev.leave}</span>
+                        {ev.travelNext&&<span style={{fontSize:9,color:"#5DC890",fontFamily:"sans-serif"}}>→{ev.travelNext}</span>}
+                      </div>
+                    </div>
+                    {cnt>0&&<span style={{fontSize:9,color:meta.color,fontFamily:"sans-serif"}}>{cnt}📷</span>}
+                    <div style={{color:P.muted,fontSize:13}}>{isOpen?"↑":"↓"}</div>
+                  </div>
+                </button>
+              </div>
+              {isOpen&&(
+                <div style={{padding:"0 10px 10px 46px"}} className="fade-in">
+                  <div style={{fontSize:11,color:P.soft,lineHeight:1.65,fontFamily:"sans-serif",marginBottom:6}}>{ev.detail}</div>
+                  {ev.tip&&<div style={{fontSize:10,padding:"5px 9px",background:"#0A0A1A",borderLeft:`2px solid ${meta.color}`,borderRadius:"0 7px 7px 0",color:"#8898C8",lineHeight:1.5,marginBottom:6,fontFamily:"sans-serif"}}>💡 {ev.tip}</div>}
+                  <button onClick={()=>onSelectEvent(ev)} style={{width:"100%",marginTop:6,padding:"7px 0",borderRadius:7,cursor:"pointer",border:`1px solid ${meta.color}55`,background:meta.color+"14",color:meta.color,fontSize:10,fontFamily:"sans-serif"}}>
+                    🗺 View on map & add memories →
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── INFO VIEW ────────────────────────────────────────────────────────────────
+function CheckItem({text}){
+  const[c,setC]=useState(false);
+  return(<div onClick={()=>setC(p=>!p)} style={{display:"flex",gap:8,padding:"7px 11px",marginBottom:3,background:c?"#001A10":P.card,border:`1px solid ${c?P.kl+"55":P.border}`,borderRadius:8,cursor:"pointer",transition:"all .2s"}}>
+    <span style={{color:c?P.kl:"#3A3028",fontSize:14,flexShrink:0}}>{c?"☑":"□"}</span>
+    <span style={{fontSize:11,color:c?P.kl:P.soft,lineHeight:1.4,fontFamily:"sans-serif",textDecoration:c?"line-through":"none",opacity:c?0.6:1}}>{text}</span>
+  </div>);
+}
+
+function InfoView(){
+  const[tab,setTab]=useState("budget");
+  return(<div style={{flex:1,overflowY:"auto",padding:"12px"}}>
+    <div style={{display:"flex",gap:5,marginBottom:12}}>
+      {[["budget","💰 Budget"],["checklist","✅ Checklist"],["pack","🎒 Pack"]].map(([t,l])=>(
+        <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"6px 0",fontSize:10,fontFamily:"sans-serif",cursor:"pointer",border:`1px solid ${tab===t?P.gold:"#222030"}`,background:tab===t?P.gold+"1A":"transparent",color:tab===t?P.text:P.muted,borderRadius:7}}>{l}</button>
+      ))}
+    </div>
+    {tab==="budget"&&<div>
+      {BUDGET.map((r,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 11px",marginBottom:4,borderRadius:8,background:r.bold?"#1A1000":P.card,border:`1px solid ${r.bold?P.gold:P.border}`,gap:8}}>
+        <div style={{fontSize:r.bold?12:10,color:r.bold?P.text:P.soft,fontWeight:r.bold?700:400,flex:1,lineHeight:1.4,fontFamily:"sans-serif"}}>{r.cat}</div>
+        <div style={{fontSize:r.bold?14:12,color:r.bold?P.goldB:P.gold,fontWeight:700,whiteSpace:"nowrap",fontFamily:"sans-serif"}}>{r.est}</div>
+      </div>))}
+      <div style={{marginTop:10,padding:"10px 12px",background:"#001A10",border:"1px solid #1A3A28",borderRadius:9,fontSize:11,color:"#6ABF7A",lineHeight:1.5,fontFamily:"sans-serif"}}>✅ Within €900–1,000 budget. Buffer: €95–235.</div>
+      <div style={{marginTop:12,padding:"10px 12px",background:"#00100A",border:`1px solid ${P.kl}44`,borderRadius:9}}>
+        <div style={{fontSize:11,color:P.kl,fontWeight:700,marginBottom:3}}>📁 Google Drive Folder</div>
+        <a href={DRIVE_URL} target="_blank" rel="noreferrer" style={{display:"block",textAlign:"center",padding:"6px 0",borderRadius:7,background:P.kl+"22",border:`1px solid ${P.kl}55`,color:P.kl,fontSize:11,fontFamily:"sans-serif",marginTop:6}}>↗ Open Honeymoon 2026 Folder</a>
+      </div>
+    </div>}
+    {tab==="checklist"&&<div>{CHECKLIST_DATA.map((s,si)=>(<div key={si} style={{marginBottom:16}}>
+      <div style={{fontSize:9,color:P.gold,fontWeight:700,marginBottom:6,fontFamily:"sans-serif",letterSpacing:1}}>📅 {s.when.toUpperCase()}</div>
+      {s.items.map((item,ii)=><CheckItem key={ii} text={item}/>)}
+    </div>))}</div>}
+    {tab==="pack"&&<div>
+      {["DEET repellent 30%+ — fireflies mangroves","Type G adapter (Malaysia) + Type F adapter (Turkey)","Long sleeves + trousers for firefly night","Sunscreen SPF 50+","Sandals AND closed shoes — cobblestones + 272 steps","Small umbrella — KL afternoon thunderstorms","Neck fan — KL August humidity","Reusable water bottle","Plastic bags for wet swimwear","Printed copies of all bookings","Headache tablets + rehydration sachets"].map((item,i)=>(<div key={i} style={{display:"flex",gap:8,padding:"7px 11px",marginBottom:3,background:P.card,border:`1px solid ${P.border}`,borderRadius:8,fontSize:11,color:P.soft,lineHeight:1.4,fontFamily:"sans-serif"}}><span style={{color:P.gold,flexShrink:0}}>→</span>{item}</div>))}
+      <div style={{marginTop:14,padding:"12px",background:"#0A0005",border:"1px solid #3A1A28",borderRadius:10}}>
+        <div style={{fontSize:9,color:P.rose,fontWeight:700,marginBottom:8,letterSpacing:1,fontFamily:"sans-serif"}}>⚠️ 3 TRAPS TO AVOID</div>
+        {[["No unofficial taxis at IST or KLIA","Aggressive touts at both airports. IST: hotel transfer. KLIA: KLIA Ekspres train."],["No cheap saffron","Real saffron ≥₺200/gram. Cheap = fake turmeric."],["Not Marini's on 57","Not halal. THIRTY8 at Grand Hyatt replaces it — halal, 38F, Petronas views."]].map(([t,d],i)=>(<div key={i} style={{marginBottom:7,padding:"8px 10px",background:"#1A0008",border:"1px solid #3A1A28",borderRadius:8}}><div style={{fontSize:11,color:"#E05050",fontWeight:700,marginBottom:2}}>{t}</div><div style={{fontSize:10,color:"#8A4040",lineHeight:1.4,fontFamily:"sans-serif"}}>{d}</div></div>))}
+      </div>
+    </div>}
+  </div>);
+}
+
+// ── ROOT ──────────────────────────────────────────────────────────────────────
+function App(){
+  const[tab,setTab]=useState("map");
+  const[dayFilter,setDayFilter]=useState(null);
+  const[drawer,setDrawer]=useState(null);
+  const media=useMedia();
+  const checked=useChecked();
+  const total=EVENTS.filter(e=>checked.isChecked(e.id)).length;
+  const TABS=[{id:"map",label:"🗺 Map"},{id:"plan",label:"📅 Plan"},{id:"info",label:"✅ Info"}];
+
+  return(
+    <div style={{background:P.bg,height:"100dvh",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto",overflow:"hidden",color:P.text}}>
+      {/* Header */}
+      <div style={{background:"#0C0C14",padding:"10px 14px 8px",borderBottom:`1px solid ${P.border}`,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <div>
+            <div style={{fontSize:7.5,letterSpacing:3.5,color:P.gold,textTransform:"uppercase",fontFamily:"sans-serif"}}>Honeymoon 2026</div>
+            <div style={{fontSize:16,fontWeight:700,color:P.text,marginTop:1}}>Istanbul & Kuala Lumpur</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:8,color:P.muted,fontFamily:"sans-serif"}}>Progress</div>
+            <div style={{fontSize:13,color:P.goldB,fontWeight:700}}>{total}/{EVENTS.length} stops</div>
+            <a href={DRIVE_URL} target="_blank" style={{fontSize:8,color:P.kl,fontFamily:"sans-serif"}}>↗ Drive {media.total>0?`(${media.total}📷)`:""}</a>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:4}}>
+          {TABS.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"6px 0",borderRadius:7,cursor:"pointer",border:`1px solid ${tab===t.id?P.gold:"#222030"}`,background:tab===t.id?P.gold+"1A":"transparent",color:tab===t.id?P.text:P.muted,fontSize:10,fontFamily:"sans-serif",transition:"all .2s"}}>{t.label}</button>))}
+        </div>
+      </div>
+
+      {tab==="map"&&<DayBar active={dayFilter} onChange={d=>{setDayFilter(d);setDrawer(null);}} checked={checked}/>}
+
+      <div style={{flex:1,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        {tab==="map"&&<MapView dayFilter={dayFilter} checked={checked} onToggle={checked.toggle} media={media} onOpenDrawer={ev=>{setDrawer(ev);}}/>}
+        {tab==="plan"&&<PlanView checked={checked} onToggle={checked.toggle} onSelectEvent={ev=>{setDrawer(ev);setTab("map");}} mediaCount={media.count}/>}
+        {tab==="info"&&<InfoView/>}
+        {drawer&&<EventDrawer event={drawer} onClose={()=>setDrawer(null)} checked={checked} onToggle={checked.toggle} media={media}/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
