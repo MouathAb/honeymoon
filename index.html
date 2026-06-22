@@ -32,14 +32,63 @@ a{color:inherit;text-decoration:none}
 .leaflet-bar a:hover{background:#1E1C28CC!important;color:#EDE5D5!important}
 .leaflet-bar{border:1px solid #1E1C28!important;box-shadow:0 2px 8px #000A!important}
 </style>
+
+<style>
+#ld{position:fixed;inset:0;background:#08080E;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+#ld.out{opacity:0;pointer-events:none}
+.ld-ring{width:38px;height:38px;border:3px solid #1E1C28;border-top-color:#A07820;border-radius:50%;animation:ldspin .8s linear infinite}
+.ld-txt{color:#5A5468;font-size:11px;font-family:sans-serif;margin-top:14px;letter-spacing:2px;text-transform:uppercase}
+@keyframes ldspin{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
+<div id="ld"><div class="ld-ring"></div><div class="ld-txt">Loading honeymoon…</div></div>
 <div id="root"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="text/babel" data-presets="react">
+
+<script>
+(function(){
+  function compileAndRender(){
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          try{
+            var src = document.getElementById('jsxsrc').textContent;
+            var out = Babel.transform(src,{
+              presets:[['react',{runtime:'classic'}]],
+              sourceMaps:false,
+              compact:true
+            }).code;
+            var fn = new Function('React','ReactDOM',out);
+            fn(window.React,window.ReactDOM);
+            var ld=document.getElementById('ld');
+            ld.classList.add('out');
+            setTimeout(function(){ld.remove();},600);
+          }catch(e){
+            console.error(e);
+            document.getElementById('ld').innerHTML=
+              '<div style="color:#E05050;font-family:sans-serif;font-size:13px;padding:24px;text-align:center">App failed to start<br><small>'+e.message+'</small></div>';
+          }
+        },0);
+      });
+    });
+  }
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/@babel/standalone/babel.min.js';
+  s.onload=compileAndRender;
+  s.onerror=function(){
+    document.getElementById('ld').innerHTML=
+      '<div style="color:#E05050;font-family:sans-serif;font-size:13px;padding:24px;text-align:center">Could not load scripts.<br>Check your internet connection.</div>';
+  };
+  document.head.appendChild(s);
+})();
+</script>
+
+<script type="text/jsx-source" id="jsxsrc">
+
 const {useState,useRef,useCallback,useEffect,useMemo,useReducer} = React;
 
 const P={ist:"#C4863A",kl:"#3AAA6B",bg:"#08080E",card:"#10101A",card2:"#14141F",border:"#1E1C28",gold:"#A07820",goldB:"#F0B840",text:"#EDE5D5",muted:"#5A5468",soft:"#C0B090",rose:"#C890A8"};
@@ -594,6 +643,7 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
 </script>
 </body>
 </html>
